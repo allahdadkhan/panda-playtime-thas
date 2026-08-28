@@ -1907,7 +1907,9 @@ function toggleBalloon(){
   ensureCtx().catch(()=>{});
   if (!pinGroup) makePin();
   balloonOn = !balloonOn;
-  if (balloonOn){ balloonT = 0; popCycle = 0; popArmed = true; clearBalloons(); }
+  clearBalloons();
+  if (balloonOn){ balloonT = 0; popCycle = 0; popArmed = true; }
+  else if (pinGroup) pinGroup.visible = false;
   balloonBtn.setAttribute('aria-pressed', String(balloonOn));
   balloonBtn.title = balloonOn ? 'Stop popping balloons' : 'Pop some balloons';
   idleSince = performance.now();
