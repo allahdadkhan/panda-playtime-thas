@@ -1119,15 +1119,76 @@ function ughSound(){
   ns.start(t0);
 }
 
+/* short punch/hit thump for belly & foot taps */
+function punchSound(){
+  if (!audioCtx) return;
+  const t = audioCtx.currentTime;
+  const out = audioCtx.destination;
+
+  /* low body thud */
+  const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+  o.type = 'sine';
+  o.frequency.setValueAtTime(180, t);
+  o.frequency.exponentialRampToValueAtTime(55, t + 0.09);
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(0.7, t + 0.005);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.16);
+  o.connect(g); g.connect(out);
+  o.start(t); o.stop(t + 0.18);
+
+  /* contact snap on top */
+  const len = 0.05, sr = audioCtx.sampleRate;
+  const buf = audioCtx.createBuffer(1, Math.ceil(sr*len), sr);
+  const d = buf.getChannelData(0);
+  for (let i=0;i<d.length;i++){ const u = i/d.length; d[i] = (Math.random()*2-1) * Math.exp(-u*22); }
+  const s = audioCtx.createBufferSource(); s.buffer = buf;
+  const f = audioCtx.createBiquadFilter(); f.type='lowpass'; f.frequency.value = 900;
+  const g2 = audioCtx.createGain(); g2.gain.value = 0.4;
+  s.connect(f); f.connect(g2); g2.connect(out);
+  s.start(t);
+}
+
+/* cute high-pitched "OUCH!" right after a belly/foot hit */
+function ouchSound(){
+  if (!audioCtx) return;
+  const t0 = audioCtx.currentTime + 0.06;
+  const out = audioCtx.destination;
+  const voice = audioCtx.createGain();
+  voice.gain.setValueAtTime(0.0001, t0);
+  voice.gain.exponentialRampToValueAtTime(0.4, t0 + 0.03);
+  voice.gain.setValueAtTime(0.4, t0 + 0.16);
+  voice.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.34);
+  voice.connect(out);
+
+  /* cute = higher pitch, quick "ow!" dip */
+  const osc = audioCtx.createOscillator();
+  osc.type = 'sawtooth';
+  osc.frequency.setValueAtTime(420, t0);
+  osc.frequency.exponentialRampToValueAtTime(520, t0 + 0.07);   // "Ow-"
+  osc.frequency.exponentialRampToValueAtTime(300, t0 + 0.30);    // "-ch!"
+
+  const f1 = audioCtx.createBiquadFilter(); f1.type='bandpass'; f1.Q = 5;
+  f1.frequency.setValueAtTime(800, t0);
+  f1.frequency.linearRampToValueAtTime(520, t0 + 0.26);
+  const f2 = audioCtx.createBiquadFilter(); f2.type='bandpass'; f2.Q = 7;
+  f2.frequency.setValueAtTime(1300, t0);
+  f2.frequency.linearRampToValueAtTime(950, t0 + 0.26);
+  const mix = audioCtx.createGain(); mix.gain.value = 0.85;
+  osc.connect(f1); f1.connect(mix);
+  osc.connect(f2); f2.connect(mix);
+  mix.connect(voice);
+  osc.start(t0); osc.stop(t0 + 0.38);
+}
+
 let reaction = null;   // { kind, t, dur }
 function playReaction(kind){
   ensureTouchBones();
   const dur = kind === 'fall' ? 2.6 : 1.1;
   reaction = { kind, t: 0, dur };
   blinkNow();
-  if (kind === 'head'){ slapSound(); ughSound(); }   // face slap: THAS! + Ugh!
+  if (kind === 'head'){ slapSound(); }                          // face slap: sharp THAS!
   else if (kind === 'fall'){ boing('low'); tassSound(); ughSound(); }
-  else { tassSound(); ughSound(); }                  // any hit gets a small natural grunt
+  else { punchSound(); ouchSound(); }                           // belly/foot: punch + cute OUCH!
 }
 window.__pandaReact = playReaction;
 
